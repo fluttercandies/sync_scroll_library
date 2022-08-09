@@ -60,11 +60,11 @@ mixin SyncControllerMixin on ScrollController {
   SyncControllerMixin? get _internalParent => parent ?? _parent;
 
   // The current actived controller
-  SyncControllerMixin? _activedParent;
+  SyncControllerMixin? _activedLinkParent;
 
   bool get parentIsNotNull => _internalParent != null;
 
-  bool get isSelf => _activedParent == null;
+  bool get isSelf => _activedLinkParent == null;
 
   void linkParent<S extends StatefulWidget, T extends SyncScrollStateMinxin<S>>(
       BuildContext context) {
@@ -117,8 +117,8 @@ mixin SyncControllerMixin on ScrollController {
   }
 
   void handleDragUpdate(DragUpdateDetails details) {
-    if (_activedParent != null && _activedParent!.hasDrag) {
-      _activedParent!.handleDragUpdate(details);
+    if (_activedLinkParent != null && _activedLinkParent!.hasDrag) {
+      _activedLinkParent!.handleDragUpdate(details);
     } else {
       for (final DragHoldController item in _positionToListener.values) {
         item.handleDragUpdate(details);
@@ -127,7 +127,7 @@ mixin SyncControllerMixin on ScrollController {
   }
 
   void handleDragEnd(DragEndDetails details) {
-    _activedParent?.handleDragEnd(details);
+    _activedLinkParent?.handleDragEnd(details);
 
     for (final DragHoldController item in _positionToListener.values) {
       item.handleDragEnd(details);
@@ -135,8 +135,8 @@ mixin SyncControllerMixin on ScrollController {
   }
 
   void handleDragCancel() {
-    _activedParent?.handleDragCancel();
-    _activedParent = null;
+    _activedLinkParent?.handleDragCancel();
+    _activedLinkParent = null;
 
     for (final DragHoldController item in _positionToListener.values) {
       item.handleDragCancel();
@@ -144,19 +144,21 @@ mixin SyncControllerMixin on ScrollController {
   }
 
   void forceCancel() {
-    _activedParent?.forceCancel();
-    _activedParent = null;
+    _activedLinkParent?.forceCancel();
+    _activedLinkParent = null;
 
     for (final DragHoldController item in _positionToListener.values) {
       item.forceCancel();
     }
   }
 
-  double get extentAfter =>
-      _activedParent != null ? _activedParent!.extentAfter : _extentAfter;
+  double get extentAfter => _activedLinkParent != null
+      ? _activedLinkParent!.extentAfter
+      : _extentAfter;
 
-  double get extentBefore =>
-      _activedParent != null ? _activedParent!.extentBefore : _extentBefore;
+  double get extentBefore => _activedLinkParent != null
+      ? _activedLinkParent!.extentBefore
+      : _extentBefore;
 
   double get _extentAfter => _positionToListener.keys.isEmpty
       ? 0
@@ -167,16 +169,16 @@ mixin SyncControllerMixin on ScrollController {
       : _positionToListener.keys.first.extentBefore;
 
   bool get hasDrag =>
-      _activedParent != null ? _activedParent!.hasDrag : _hasDrag;
+      _activedLinkParent != null ? _activedLinkParent!.hasDrag : _hasDrag;
   bool get hasHold =>
-      _activedParent != null ? _activedParent!.hasHold : _hasHold;
+      _activedLinkParent != null ? _activedLinkParent!.hasHold : _hasHold;
 
   bool get _hasDrag => _positionToListener.values
       .any((DragHoldController element) => element.hasDrag);
   bool get _hasHold => _positionToListener.values
       .any((DragHoldController element) => element.hasHold);
 
-  SyncControllerMixin? getParent(bool test(SyncControllerMixin parent)) {
+  SyncControllerMixin? _findParent(bool test(SyncControllerMixin parent)) {
     if (_internalParent == null) {
       return null;
     }
@@ -184,24 +186,32 @@ mixin SyncControllerMixin on ScrollController {
       return _internalParent!;
     }
 
-    return _internalParent!.getParent(test);
+    return _internalParent!._findParent(test);
   }
 
-  void findActivedParent(double delta, DragUpdateDetails details) {
-    if (_activedParent != null) {
+  void linkActivedParent(
+    double delta,
+    DragUpdateDetails details,
+    TextDirection textDirection,
+  ) {
+    if (_activedLinkParent != null) {
       return;
     }
     SyncControllerMixin? activedParent;
+    if (textDirection == TextDirection.rtl) {
+      delta = -delta;
+    }
+
     if (delta < 0 && _extentAfter == 0) {
       activedParent =
-          getParent((SyncControllerMixin parent) => parent._extentAfter != 0);
+          _findParent((SyncControllerMixin parent) => parent._extentAfter != 0);
     } else if (delta > 0 && _extentBefore == 0) {
-      activedParent =
-          getParent((SyncControllerMixin parent) => parent._extentBefore != 0);
+      activedParent = _findParent(
+          (SyncControllerMixin parent) => parent._extentBefore != 0);
     }
 
     if (activedParent != null) {
-      _activedParent = activedParent;
+      _activedLinkParent = activedParent;
       activedParent.handleDragDown(null);
       activedParent.handleDragStart(
         DragStartDetails(

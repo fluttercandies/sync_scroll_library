@@ -19,6 +19,8 @@ mixin SyncScrollStateMinxin<T extends StatefulWidget> on State<T> {
   // widget.physics
   ScrollPhysics? get physics;
 
+  TextDirection? get textDirection;
+
   Axis get scrollDirection;
   bool get canDrag => physics?.shouldAcceptUserOffset(_testPageMetrics) ?? true;
   ScrollPhysics? get usedScrollPhysics => _physics;
@@ -133,9 +135,10 @@ mixin SyncScrollStateMinxin<T extends StatefulWidget> on State<T> {
           ? details.delta.dx
           : details.delta.dy;
 
-      syncController.findActivedParent(
+      syncController.linkActivedParent(
         delta,
         details,
+        textDirection ?? TextDirection.ltr,
       );
     }
   }
