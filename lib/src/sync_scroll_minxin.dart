@@ -46,8 +46,8 @@ mixin SyncScrollStateMinxin<T extends StatefulWidget> on State<T> {
   }
 
   ScrollPhysics? getScrollPhysics() {
-    ScrollBehavior configuration = ScrollConfiguration.of(context);
-    var temp = configuration.getScrollPhysics(context);
+    final ScrollBehavior configuration = ScrollConfiguration.of(context);
+    ScrollPhysics temp = configuration.getScrollPhysics(context);
     if (physics != null) {
       temp = physics!.applyTo(temp);
     }
