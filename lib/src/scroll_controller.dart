@@ -121,6 +121,15 @@ mixin SyncControllerMixin on ScrollController {
       _activedLinkParent!.handleDragUpdate(details);
     } else {
       for (final DragHoldController item in _positionToListener.values) {
+        if (!item.hasDrag) {
+          item.handleDragStart(
+            DragStartDetails(
+              globalPosition: details.globalPosition,
+              localPosition: details.localPosition,
+              sourceTimeStamp: details.sourceTimeStamp,
+            ),
+          );
+        }
         item.handleDragUpdate(details);
       }
     }

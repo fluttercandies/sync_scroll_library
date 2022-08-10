@@ -19,7 +19,7 @@ mixin SyncScrollStateMinxin<T extends StatefulWidget> on State<T> {
   // widget.physics
   ScrollPhysics? get physics;
 
-  TextDirection? get textDirection;
+  TextDirection? get textDirection => Directionality.maybeOf(context);
 
   Axis get scrollDirection;
   bool get canDrag => physics?.shouldAcceptUserOffset(_testPageMetrics) ?? true;
