@@ -55,6 +55,7 @@ mixin LinkScrollControllerMixin on ScrollController
 // https://github.com/dart-lang/sdk/issues/50167
     implements
         SyncScrollControllerMixin {
+  late final SyncScrollHandler _syncHandler = SyncScrollHandler();
   // The parent from user
   LinkScrollControllerMixin? get parent;
   // The parent from link
@@ -81,16 +82,12 @@ mixin LinkScrollControllerMixin on ScrollController
 
   @override
   void handleDragDown(DragDownDetails? details) {
-    for (final DragHoldController item in positionToListener.values) {
-      item.handleDragDown(details);
-    }
+    _syncHandler.handleDragDown(details);
   }
 
   @override
   void handleDragStart(DragStartDetails details) {
-    for (final DragHoldController item in positionToListener.values) {
-      item.handleDragStart(details);
-    }
+    _syncHandler.handleDragStart(details);
   }
 
   @override
@@ -98,45 +95,28 @@ mixin LinkScrollControllerMixin on ScrollController
     if (_activedLinkParent != null && _activedLinkParent!.hasDrag) {
       _activedLinkParent!.handleDragUpdate(details);
     } else {
-      for (final DragHoldController item in positionToListener.values) {
-        if (!item.hasDrag) {
-          item.handleDragStart(
-            DragStartDetails(
-              globalPosition: details.globalPosition,
-              localPosition: details.localPosition,
-              sourceTimeStamp: details.sourceTimeStamp,
-            ),
-          );
-        }
-        item.handleDragUpdate(details);
-      }
+      _syncHandler.handleDragUpdate(details);
     }
   }
 
   @override
   void handleDragEnd(DragEndDetails details) {
     _activedLinkParent?.handleDragEnd(details);
-    for (final DragHoldController item in positionToListener.values) {
-      item.handleDragEnd(details);
-    }
+    _syncHandler.handleDragEnd(details);
   }
 
   @override
   void handleDragCancel() {
     _activedLinkParent?.handleDragCancel();
     _activedLinkParent = null;
-    for (final DragHoldController item in positionToListener.values) {
-      item.handleDragCancel();
-    }
+    _syncHandler.handleDragCancel();
   }
 
   @override
   void forceCancel() {
     _activedLinkParent?.forceCancel();
     _activedLinkParent = null;
-    for (final DragHoldController item in positionToListener.values) {
-      item.forceCancel();
-    }
+    _syncHandler.forceCancel();
   }
 
   double get extentAfter => _activedLinkParent != null
@@ -147,22 +127,22 @@ mixin LinkScrollControllerMixin on ScrollController
       ? _activedLinkParent!.extentBefore
       : _extentBefore;
 
-  double get _extentAfter => positionToListener.keys.isEmpty
+  double get _extentAfter => _syncHandler.positionToListener.keys.isEmpty
       ? 0
-      : positionToListener.keys.first.extentAfter;
+      : _syncHandler.positionToListener.keys.first.extentAfter;
 
-  double get _extentBefore => positionToListener.keys.isEmpty
+  double get _extentBefore => _syncHandler.positionToListener.keys.isEmpty
       ? 0
-      : positionToListener.keys.first.extentBefore;
+      : _syncHandler.positionToListener.keys.first.extentBefore;
 
   bool get hasDrag =>
       _activedLinkParent != null ? _activedLinkParent!.hasDrag : _hasDrag;
   bool get hasHold =>
       _activedLinkParent != null ? _activedLinkParent!.hasHold : _hasHold;
 
-  bool get _hasDrag => positionToListener.values
+  bool get _hasDrag => _syncHandler.positionToListener.values
       .any((DragHoldController element) => element.hasDrag);
-  bool get _hasHold => positionToListener.values
+  bool get _hasHold => _syncHandler.positionToListener.values
       .any((DragHoldController element) => element.hasHold);
 
   LinkScrollControllerMixin? _findParent(
@@ -211,37 +191,21 @@ mixin LinkScrollControllerMixin on ScrollController
     }
   }
 
-  final Map<ScrollPosition, DragHoldController> _positionToListener =
-      <ScrollPosition, DragHoldController>{};
-  @override
-  Map<ScrollPosition, DragHoldController> get positionToListener =>
-      _positionToListener;
   @override
   void attach(ScrollPosition position) {
     super.attach(position);
-    assert(!_positionToListener.containsKey(position));
-    if (_positionToListener.isNotEmpty) {
-      final double pixels = _positionToListener.keys.first.pixels;
-      if (position.pixels != pixels) {
-        position.correctPixels(pixels);
-      }
-    }
-
-    _positionToListener[position] = DragHoldController(position);
+    _syncHandler.attach(position);
   }
 
   @override
   void detach(ScrollPosition position) {
-    assert(_positionToListener.containsKey(position));
-    _positionToListener[position]!.forceCancel();
-    _positionToListener.remove(position);
-
+    _syncHandler.detach(position);
     super.detach(position);
   }
 
   @override
   void dispose() {
-    forceCancel();
+    _syncHandler.forceCancel();
     super.dispose();
   }
 }

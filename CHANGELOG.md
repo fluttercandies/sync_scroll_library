@@ -1,3 +1,7 @@
+## 1.0.1
+
+* fix simulation scroll is not sync
+
 ## 1.0.0
 
 * refactor code

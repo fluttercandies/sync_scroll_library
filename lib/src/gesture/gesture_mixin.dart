@@ -1,15 +1,15 @@
 import 'package:flutter/gestures.dart';
 
-class GestureMixin {
-  void handleDragDown(DragDownDetails details) {}
+mixin GestureMixin {
+  void handleDragDown(DragDownDetails details);
 
-  void handleDragStart(DragStartDetails details) {}
+  void handleDragStart(DragStartDetails details);
 
-  void handleDragUpdate(DragUpdateDetails details) {}
+  void handleDragUpdate(DragUpdateDetails details);
 
-  void handleDragEnd(DragEndDetails details) {}
+  void handleDragEnd(DragEndDetails details);
 
-  void handleDragCancel() {}
+  void handleDragCancel();
 
-  void forceCancel() {}
+  void forceCancel();
 }

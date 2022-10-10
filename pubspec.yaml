@@ -1,6 +1,6 @@
 name: sync_scroll_library
 description: The library for extended_tabs and flex_grid to sync positions or link parent ScrollController.
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/fluttercandies/sync_scroll_library
 
 environment:
