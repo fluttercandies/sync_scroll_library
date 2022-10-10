@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'scroll_controller.dart';
+
+import 'gesture_mixin.dart';
 
 final PageMetrics _testPageMetrics = PageMetrics(
   axisDirection: AxisDirection.down,
@@ -11,11 +12,12 @@ final PageMetrics _testPageMetrics = PageMetrics(
   viewportFraction: 1.0,
 );
 
-mixin SyncScrollStateMinxin<T extends StatefulWidget> on State<T> {
+abstract class GestureStateMixin<T extends StatefulWidget> extends State<T>
+    with GestureMixin {
   Map<Type, GestureRecognizerFactory>? _gestureRecognizers;
   Map<Type, GestureRecognizerFactory>? get gestureRecognizers =>
       _gestureRecognizers;
-  SyncControllerMixin get syncController;
+
   // widget.physics
   ScrollPhysics? get physics;
 
@@ -67,11 +69,11 @@ mixin SyncScrollStateMinxin<T extends StatefulWidget> on State<T> {
               () => HorizontalDragGestureRecognizer(),
               (HorizontalDragGestureRecognizer instance) {
                 instance
-                  ..onDown = _handleDragDown
-                  ..onStart = _handleDragStart
-                  ..onUpdate = _handleDragUpdate
-                  ..onEnd = _handleDragEnd
-                  ..onCancel = _handleDragCancel
+                  ..onDown = handleDragDown
+                  ..onStart = handleDragStart
+                  ..onUpdate = handleDragUpdate
+                  ..onEnd = handleDragEnd
+                  ..onCancel = handleDragCancel
                   ..minFlingDistance = _physics?.minFlingDistance
                   ..minFlingVelocity = _physics?.minFlingVelocity
                   ..maxFlingVelocity = _physics?.maxFlingVelocity;
@@ -87,11 +89,11 @@ mixin SyncScrollStateMinxin<T extends StatefulWidget> on State<T> {
               () => VerticalDragGestureRecognizer(),
               (VerticalDragGestureRecognizer instance) {
                 instance
-                  ..onDown = _handleDragDown
-                  ..onStart = _handleDragStart
-                  ..onUpdate = _handleDragUpdate
-                  ..onEnd = _handleDragEnd
-                  ..onCancel = _handleDragCancel
+                  ..onDown = handleDragDown
+                  ..onStart = handleDragStart
+                  ..onUpdate = handleDragUpdate
+                  ..onEnd = handleDragEnd
+                  ..onCancel = handleDragCancel
                   ..minFlingDistance = _physics?.minFlingDistance
                   ..minFlingVelocity = _physics?.minFlingVelocity
                   ..maxFlingVelocity = _physics?.maxFlingVelocity;
@@ -103,43 +105,7 @@ mixin SyncScrollStateMinxin<T extends StatefulWidget> on State<T> {
       }
     } else {
       _gestureRecognizers = const <Type, GestureRecognizerFactory>{};
-      syncController.forceCancel();
-    }
-  }
-
-  void _handleDragDown(DragDownDetails details) {
-    syncController.forceCancel();
-    syncController.handleDragDown(details);
-  }
-
-  void _handleDragStart(DragStartDetails details) {
-    syncController.handleDragStart(details);
-  }
-
-  void _handleDragUpdate(DragUpdateDetails details) {
-    _handleParentController(details);
-    syncController.handleDragUpdate(details);
-  }
-
-  void _handleDragEnd(DragEndDetails details) {
-    syncController.handleDragEnd(details);
-  }
-
-  void _handleDragCancel() {
-    syncController.handleDragCancel();
-  }
-
-  void _handleParentController(DragUpdateDetails details) {
-    if (syncController.parentIsNotNull) {
-      final double delta = scrollDirection == Axis.horizontal
-          ? details.delta.dx
-          : details.delta.dy;
-
-      syncController.linkActivedParent(
-        delta,
-        details,
-        textDirection ?? TextDirection.ltr,
-      );
+      forceCancel();
     }
   }
 

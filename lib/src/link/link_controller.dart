@@ -1,13 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:sync_scroll_library/src/drag_hold_controller.dart';
+import 'package:sync_scroll_library/src/sync/sync_controller.dart';
 
-import 'drag_hold_controller.dart';
-import 'sync_scroll_minxin.dart';
+import 'link_scroll_state.dart';
 
-/// The [SyncScrollController] to sync pixels for all of positions
-class SyncScrollController extends ScrollController with SyncControllerMixin {
+/// The [LinkScrollController] to sync pixels for all of positions
+class LinkScrollController extends ScrollController
+    with LinkScrollControllerMixin {
   /// Creates a scroll controller that continually updates its
   /// [initialScrollOffset] to match the last scroll notification it received.
-  SyncScrollController({
+  LinkScrollController({
     double initialScrollOffset = 0.0,
     bool keepScrollOffset = true,
     String? debugLabel,
@@ -21,15 +23,15 @@ class SyncScrollController extends ScrollController with SyncControllerMixin {
   /// The Outer SyncScrollController, for example [ExtendedTabBarView] or [ExtendedPageView]
   /// It make better experience when scroll on horizontal direction
   @override
-  final SyncControllerMixin? parent;
+  final LinkScrollControllerMixin? parent;
 }
 
-/// The [SyncPageController] to scroll Pages(PageView or TabBarView) when [FlexGrid] is reach the horizontal boundary
-class SyncPageController extends PageController with SyncControllerMixin {
+/// The [LinkPageController] to scroll Pages(PageView or TabBarView) when [FlexGrid] is reach the horizontal boundary
+class LinkPageController extends PageController with LinkScrollControllerMixin {
   /// Creates a page controller.
   ///
   /// The [initialPage], [keepPage], and [viewportFraction] arguments must not be null.
-  SyncPageController({
+  LinkPageController({
     int initialPage = 0,
     bool keepPage = true,
     double viewportFraction = 1.0,
@@ -43,38 +45,177 @@ class SyncPageController extends PageController with SyncControllerMixin {
   /// The Outer SyncScrollController, for example [ExtendedTabBarView] or [ExtendedPageView]
   /// It make better experience when scroll on horizontal direction
   @override
-  final SyncControllerMixin? parent;
+  final LinkScrollControllerMixin? parent;
 }
 
-/// The mixin for [ScrollController] to sync pixels for all of positions
-mixin SyncControllerMixin on ScrollController {
-  final Map<ScrollPosition, DragHoldController> _positionToListener =
-      <ScrollPosition, DragHoldController>{};
-
+mixin LinkScrollControllerMixin on ScrollController
+// TODO(zmtzawqlp): i want something like mixin LinkScrollControllerMixin with SyncScrollControllerMixin
+// so don't need to override everything in SyncScrollControllerMixin
+// https://github.com/dart-lang/language/issues/540
+// https://github.com/dart-lang/sdk/issues/50167
+    implements
+        SyncScrollControllerMixin {
   // The parent from user
-  SyncControllerMixin? get parent;
+  LinkScrollControllerMixin? get parent;
   // The parent from link
-  SyncControllerMixin? _parent;
+  LinkScrollControllerMixin? _parent;
 
   // The actual used parent
-  SyncControllerMixin? get _internalParent => parent ?? _parent;
+  LinkScrollControllerMixin? get _internalParent => parent ?? _parent;
 
   // The current actived controller
-  SyncControllerMixin? _activedLinkParent;
+  LinkScrollControllerMixin? _activedLinkParent;
 
   bool get parentIsNotNull => _internalParent != null;
 
   bool get isSelf => _activedLinkParent == null;
 
-  void linkParent<S extends StatefulWidget, T extends SyncScrollStateMinxin<S>>(
+  void linkParent<S extends StatefulWidget, T extends LinkScrollState<S>>(
       BuildContext context) {
-    _parent = context.findAncestorStateOfType<T>()?.syncController;
+    _parent = context.findAncestorStateOfType<T>()?.linkScrollController;
   }
 
   void unlinkParent() {
     _parent = null;
   }
 
+  @override
+  void handleDragDown(DragDownDetails? details) {
+    for (final DragHoldController item in positionToListener.values) {
+      item.handleDragDown(details);
+    }
+  }
+
+  @override
+  void handleDragStart(DragStartDetails details) {
+    for (final DragHoldController item in positionToListener.values) {
+      item.handleDragStart(details);
+    }
+  }
+
+  @override
+  void handleDragUpdate(DragUpdateDetails details) {
+    if (_activedLinkParent != null && _activedLinkParent!.hasDrag) {
+      _activedLinkParent!.handleDragUpdate(details);
+    } else {
+      for (final DragHoldController item in positionToListener.values) {
+        if (!item.hasDrag) {
+          item.handleDragStart(
+            DragStartDetails(
+              globalPosition: details.globalPosition,
+              localPosition: details.localPosition,
+              sourceTimeStamp: details.sourceTimeStamp,
+            ),
+          );
+        }
+        item.handleDragUpdate(details);
+      }
+    }
+  }
+
+  @override
+  void handleDragEnd(DragEndDetails details) {
+    _activedLinkParent?.handleDragEnd(details);
+    for (final DragHoldController item in positionToListener.values) {
+      item.handleDragEnd(details);
+    }
+  }
+
+  @override
+  void handleDragCancel() {
+    _activedLinkParent?.handleDragCancel();
+    _activedLinkParent = null;
+    for (final DragHoldController item in positionToListener.values) {
+      item.handleDragCancel();
+    }
+  }
+
+  @override
+  void forceCancel() {
+    _activedLinkParent?.forceCancel();
+    _activedLinkParent = null;
+    for (final DragHoldController item in positionToListener.values) {
+      item.forceCancel();
+    }
+  }
+
+  double get extentAfter => _activedLinkParent != null
+      ? _activedLinkParent!.extentAfter
+      : _extentAfter;
+
+  double get extentBefore => _activedLinkParent != null
+      ? _activedLinkParent!.extentBefore
+      : _extentBefore;
+
+  double get _extentAfter => positionToListener.keys.isEmpty
+      ? 0
+      : positionToListener.keys.first.extentAfter;
+
+  double get _extentBefore => positionToListener.keys.isEmpty
+      ? 0
+      : positionToListener.keys.first.extentBefore;
+
+  bool get hasDrag =>
+      _activedLinkParent != null ? _activedLinkParent!.hasDrag : _hasDrag;
+  bool get hasHold =>
+      _activedLinkParent != null ? _activedLinkParent!.hasHold : _hasHold;
+
+  bool get _hasDrag => positionToListener.values
+      .any((DragHoldController element) => element.hasDrag);
+  bool get _hasHold => positionToListener.values
+      .any((DragHoldController element) => element.hasHold);
+
+  LinkScrollControllerMixin? _findParent(
+      bool test(LinkScrollControllerMixin parent)) {
+    if (_internalParent == null) {
+      return null;
+    }
+    if (test(_internalParent!)) {
+      return _internalParent!;
+    }
+
+    return _internalParent!._findParent(test);
+  }
+
+  void linkActivedParent(
+    double delta,
+    DragUpdateDetails details,
+    TextDirection textDirection,
+  ) {
+    if (_activedLinkParent != null) {
+      return;
+    }
+    LinkScrollControllerMixin? activedParent;
+    if (textDirection == TextDirection.rtl) {
+      delta = -delta;
+    }
+
+    if (delta < 0 && _extentAfter == 0) {
+      activedParent = _findParent(
+          (LinkScrollControllerMixin parent) => parent._extentAfter != 0);
+    } else if (delta > 0 && _extentBefore == 0) {
+      activedParent = _findParent(
+          (LinkScrollControllerMixin parent) => parent._extentBefore != 0);
+    }
+
+    if (activedParent != null) {
+      _activedLinkParent = activedParent;
+      activedParent.handleDragDown(null);
+      activedParent.handleDragStart(
+        DragStartDetails(
+          globalPosition: details.globalPosition,
+          localPosition: details.localPosition,
+          sourceTimeStamp: details.sourceTimeStamp,
+        ),
+      );
+    }
+  }
+
+  final Map<ScrollPosition, DragHoldController> _positionToListener =
+      <ScrollPosition, DragHoldController>{};
+  @override
+  Map<ScrollPosition, DragHoldController> get positionToListener =>
+      _positionToListener;
   @override
   void attach(ScrollPosition position) {
     super.attach(position);
@@ -102,133 +243,5 @@ mixin SyncControllerMixin on ScrollController {
   void dispose() {
     forceCancel();
     super.dispose();
-  }
-
-  void handleDragDown(DragDownDetails? details) {
-    for (final DragHoldController item in _positionToListener.values) {
-      item.handleDragDown(details);
-    }
-  }
-
-  void handleDragStart(DragStartDetails details) {
-    for (final DragHoldController item in _positionToListener.values) {
-      item.handleDragStart(details);
-    }
-  }
-
-  void handleDragUpdate(DragUpdateDetails details) {
-    if (_activedLinkParent != null && _activedLinkParent!.hasDrag) {
-      _activedLinkParent!.handleDragUpdate(details);
-    } else {
-      for (final DragHoldController item in _positionToListener.values) {
-        if (!item.hasDrag) {
-          item.handleDragStart(
-            DragStartDetails(
-              globalPosition: details.globalPosition,
-              localPosition: details.localPosition,
-              sourceTimeStamp: details.sourceTimeStamp,
-            ),
-          );
-        }
-        item.handleDragUpdate(details);
-      }
-    }
-  }
-
-  void handleDragEnd(DragEndDetails details) {
-    _activedLinkParent?.handleDragEnd(details);
-
-    for (final DragHoldController item in _positionToListener.values) {
-      item.handleDragEnd(details);
-    }
-  }
-
-  void handleDragCancel() {
-    _activedLinkParent?.handleDragCancel();
-    _activedLinkParent = null;
-
-    for (final DragHoldController item in _positionToListener.values) {
-      item.handleDragCancel();
-    }
-  }
-
-  void forceCancel() {
-    _activedLinkParent?.forceCancel();
-    _activedLinkParent = null;
-
-    for (final DragHoldController item in _positionToListener.values) {
-      item.forceCancel();
-    }
-  }
-
-  double get extentAfter => _activedLinkParent != null
-      ? _activedLinkParent!.extentAfter
-      : _extentAfter;
-
-  double get extentBefore => _activedLinkParent != null
-      ? _activedLinkParent!.extentBefore
-      : _extentBefore;
-
-  double get _extentAfter => _positionToListener.keys.isEmpty
-      ? 0
-      : _positionToListener.keys.first.extentAfter;
-
-  double get _extentBefore => _positionToListener.keys.isEmpty
-      ? 0
-      : _positionToListener.keys.first.extentBefore;
-
-  bool get hasDrag =>
-      _activedLinkParent != null ? _activedLinkParent!.hasDrag : _hasDrag;
-  bool get hasHold =>
-      _activedLinkParent != null ? _activedLinkParent!.hasHold : _hasHold;
-
-  bool get _hasDrag => _positionToListener.values
-      .any((DragHoldController element) => element.hasDrag);
-  bool get _hasHold => _positionToListener.values
-      .any((DragHoldController element) => element.hasHold);
-
-  SyncControllerMixin? _findParent(bool test(SyncControllerMixin parent)) {
-    if (_internalParent == null) {
-      return null;
-    }
-    if (test(_internalParent!)) {
-      return _internalParent!;
-    }
-
-    return _internalParent!._findParent(test);
-  }
-
-  void linkActivedParent(
-    double delta,
-    DragUpdateDetails details,
-    TextDirection textDirection,
-  ) {
-    if (_activedLinkParent != null) {
-      return;
-    }
-    SyncControllerMixin? activedParent;
-    if (textDirection == TextDirection.rtl) {
-      delta = -delta;
-    }
-
-    if (delta < 0 && _extentAfter == 0) {
-      activedParent =
-          _findParent((SyncControllerMixin parent) => parent._extentAfter != 0);
-    } else if (delta > 0 && _extentBefore == 0) {
-      activedParent = _findParent(
-          (SyncControllerMixin parent) => parent._extentBefore != 0);
-    }
-
-    if (activedParent != null) {
-      _activedLinkParent = activedParent;
-      activedParent.handleDragDown(null);
-      activedParent.handleDragStart(
-        DragStartDetails(
-          globalPosition: details.globalPosition,
-          localPosition: details.localPosition,
-          sourceTimeStamp: details.sourceTimeStamp,
-        ),
-      );
-    }
   }
 }
