@@ -1,3 +1,7 @@
+## 1.1.0
+
+* Migrate to Flutter 3.10.0
+
 ## 1.0.1
 
 * fix simulation scroll is not sync
