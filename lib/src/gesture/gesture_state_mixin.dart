@@ -3,15 +3,6 @@ import 'package:flutter/material.dart';
 
 import 'gesture_mixin.dart';
 
-final PageMetrics _testPageMetrics = PageMetrics(
-  axisDirection: AxisDirection.down,
-  minScrollExtent: 0,
-  maxScrollExtent: 10,
-  pixels: 5,
-  viewportDimension: 10,
-  viewportFraction: 1.0,
-);
-
 abstract class GestureStateMixin<T extends StatefulWidget> extends State<T>
     with GestureMixin {
   Map<Type, GestureRecognizerFactory>? _gestureRecognizers;
@@ -23,6 +14,15 @@ abstract class GestureStateMixin<T extends StatefulWidget> extends State<T>
 
   TextDirection? get textDirection => Directionality.maybeOf(context);
 
+  late final PageMetrics _testPageMetrics = PageMetrics(
+    devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+    axisDirection: AxisDirection.down,
+    minScrollExtent: 0,
+    maxScrollExtent: 10,
+    pixels: 5,
+    viewportDimension: 10,
+    viewportFraction: 1.0,
+  );
   Axis get scrollDirection;
   bool get canDrag => physics?.shouldAcceptUserOffset(_testPageMetrics) ?? true;
   ScrollPhysics? get usedScrollPhysics => _physics;
